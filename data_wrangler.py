@@ -11,29 +11,40 @@ class DataWrangler:
 	def convertToDataframe(self):
     		
 		dataPath = "dataset/train.csv"
-
 		fullDataframe = pd.read_csv(dataPath)
+		return fullDataframe
 
-		quoteDataframe = fullDataframe[fullDataframe["record_type"] == 0]
-		purchaseDataframe = fullDataframe[fullDataframe["record_type"] == 1]
+	def splitDataFrameToSections(self, df):
+		quoteDataframe = df[df["record_type"] == 0]
+		purchaseDataframe = df[df["record_type"] == 1]
+		fullDataframe = df
 
 		return fullDataframe, quoteDataframe, purchaseDataframe
+
+	def prepareDataForOperation(self, df):
+    		return df
+    		
 	
-	def TransformTimeOfTheDay(self, df):
+	def transformTimeOfTheDay(self, df):
 		
 		dataframe = df.copy()
 
 		# convert time to array of minute and seconds
-		dataframe["splitted_time"] = dataframe["time"].str.split(":")
+		# dataframe["splitted_time"] = dataframe["time"].str.split(":")
 
 		#  convert to numpy array so we can select the hour
-		x = np.array(dataframe["splitted_time"].tolist())
+		# x = np.array(dataframe["splitted_time"].tolist())
 
 		# Convert it back to list so we add it to the dataframe
-		new_time = list(x[:,0])
+		# new_time = list(x[:,0])
+		
+		# dataframe["new_time"] = new_time
+
+
+		expandedTime = dataframe["time"].str.split(":", n =1, expand = True)
 
 		# add new time to dataframe
-		dataframe["new_time"] = new_time
+		dataframe["new_time"] = expandedTime[0]
 
 		dataframe.loc[dataframe["new_time"].astype('int64') <= 12, 'time_cat'] = ' MORNING'
 		dataframe.loc[(dataframe["new_time"].astype('int64') > 12) & (dataframe["new_time"].astype('int64') <= 16), 'time_cat'] = ' AFTERNOON'
@@ -50,7 +61,6 @@ class DataWrangler:
 		south = ['AL', 'AR', 'DE', 'FL', 'GA', 'KY', 'LA', 'MD', 'MS', 'NC', 'OK', 'SC', 'TN', 'TX', 'VA', 'WV']
 		west = ['AK', 'AZ', 'CA', 'CO', 'HI', 'ID', 'MT', 'NV', 'NM', 'OR', 'UT', 'WA', 'WY']
 		
-
 
 		# covert to equivalent censor reqion
 		dataframe.loc[dataframe.state.isin(mid_west), 'state'] = 'mid_west'
@@ -94,8 +104,8 @@ class DataWrangler:
 		df['wg_g_time_cal'] = df.shopping_pt.astype('int64') * df.time_cat.astype('str')
 		return df
 
-	def save_df_to_directory(self, df, filename):
-		df.to_csv("dataset/" + filename , sep='\t', encoding='utf-8')
+	def saveToDirectory(self, df, filename):
+		df.to_csv("result/" + filename , sep='\t', encoding='utf-8')
 		print("dataframe successfully saved")
 
 
@@ -103,14 +113,14 @@ class DataWrangler:
     
 		col_names =  ['customer_ID', 'shopping_point', 'day', 'state','group_size','homeowner','car_age','car_value','c_age_oldest','age_youngest','married_couple','c_previous','duration_previous','W_A','W_B','W_C','W_D','W_E','W_F','W_G','cost','wg_time']
 		
-		uniqueDataframe  = pd.DataFrame(columns = col_names)
+		uniqueDataframe  = pd.DataFrame(columns = col_names, index = range(568240))
 
 
 		uniqueRecord = []
-		print(len(df["customer_ID"].unique()))
+
 		grouped = df.groupby('customer_ID')
 
-		index  = 1
+		index  = 0
 		for name, group in tqdm(grouped):
 			# print(name)
 
@@ -186,22 +196,42 @@ class DataWrangler:
 			#print(time_cat)
 			# print(group["state"])
 			# print(group["customer_ID"])
-		print("Done summerizing Datasets")
+
+		return uniqueDataframe
+		print("✔✔  Done summerizing Datasets")
 
 		
 			
-
+# initialize class
 Data =  DataWrangler()
 
-f, quote_df, p = Data.convertToDataframe()
+print(" Starting data preparation & compression , please wait !!! ")
+# convert csv file to dataframe
+df = Data.convertToDataframe()
 
-df = Data.transformstateToCensusRegion(quote_df)
+# split dataframe to all, putchase & quote
+f, quote_df, p = Data.splitDataFrameToSections(df)
+
+# process non available data in dataframe
+df = Data.prepareDataForOperation(quote_df)
+
+# convert and group state to 4 categories
+df = Data.transformstateToCensusRegion(df)
+
+#  transform age from numeric to categorical
 df = Data.transformAgeToCategorical(df)
+
+# perform weighted average on the A-G features
 df = Data.performWeightedAverageOnAG(df)
 
-df = Data.TransformTimeOfTheDay(df)
+# transform the time of quote from time to Categorical
+df = Data.transformTimeOfTheDay(df)
+
+# perform weighted average on time
 df = Data.performWeightedAverageOntTime(df)
 
-# print(df)
+#  summerize duplicates quotes to one for customer ID
 df = Data.summerizeQuote(df)
-Data.save_df_to_directory(df, "summerized_result.csv")
+
+# save the content of the datafram as csv file
+Data.saveToDirectory(df, "summerized_resultx.csv")
