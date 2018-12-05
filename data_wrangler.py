@@ -1,7 +1,12 @@
 import pandas as pd
 from tqdm import tqdm
-
+from collections import Counter
+import numpy as np
 class DataWrangler:
+	
+	def findMostFrequentChar(self, data):
+		return Counter(data).most_common()[0][0]
+
 
 	def convertToDataframe(self):
     		
@@ -14,6 +19,28 @@ class DataWrangler:
 
 		return fullDataframe, quoteDataframe, purchaseDataframe
 	
+	def TransformTimeOfTheDay(self, df):
+		
+		dataframe = df.copy()
+
+		# convert time to array of minute and seconds
+		dataframe["splitted_time"] = dataframe["time"].str.split(":")
+
+		#  convert to numpy array so we can select the hour
+		x = np.array(dataframe["splitted_time"].tolist())
+
+		# Convert it back to list so we add it to the dataframe
+		new_time = list(x[:,0])
+
+		# add new time to dataframe
+		dataframe["new_time"] = new_time
+
+		dataframe.loc[dataframe["new_time"].astype('int64') <= 12, 'time_cat'] = ' MORNING'
+		dataframe.loc[(dataframe["new_time"].astype('int64') > 12) & (dataframe["new_time"].astype('int64') <= 16), 'time_cat'] = ' AFTERNOON'
+		dataframe.loc[dataframe["new_time"].astype('int64') > 16, 'time_cat'] = ' NIGHT'
+
+		return dataframe
+
 	def transformstateToCensusRegion(self, df):
     		
 		dataframe = df.copy()
@@ -37,7 +64,8 @@ class DataWrangler:
     		
 		dataframe = df.copy()
 
-		dataframe.loc[(dataframe["age_oldest"].astype('int64') > 16) & (dataframe["age_oldest"].astype('int64') <= 28), 'c_age_oldest'] = 'LOW'
+		# dataframe.loc[(dataframe["age_oldest"].astype('int64') > 16) & (dataframe["age_oldest"].astype('int64') <= 28), 'c_age_oldest'] = 'LOW'
+		dataframe.loc[dataframe["age_oldest"].astype('int64') <= 28, 'c_age_oldest'] = 'LOW'
 		dataframe.loc[(dataframe["age_oldest"].astype('int64') > 28) & (dataframe["age_oldest"].astype('int64') <= 60), 'c_age_oldest'] = 'MED'
 		dataframe.loc[dataframe["age_oldest"].astype('int64') > 60, 'c_age_oldest'] = 'HIGH'
 
@@ -48,11 +76,7 @@ class DataWrangler:
 		return dataframe
 
 
-	def performWeightedAverage(self, quote_df):
-		# f, quote_df, p = self.convertToDataframe()
-
-		# Remove some feature we wont be needing
-		quote_df = quote_df.drop(columns=['record_type', 'location', 'risk_factor'])
+	def performWeightedAverageOnAG(self, quote_df):
 
 		quote_df['wg_a_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.A.astype('str')
 		quote_df['wg_b_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.B.astype('str')
@@ -62,65 +86,122 @@ class DataWrangler:
 		quote_df['wg_f_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.F.astype('str')
 		quote_df['wg_g_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.G.astype('str')
 
-		quote_df = quote_df.drop(columns=['A', 'B', 'C','D','E','F','G'])
-
 		return quote_df
+
+
+	def performWeightedAverageOntTime(self, df):
+    	
+		df['wg_g_time_cal'] = df.shopping_pt.astype('int64') * df.time_cat.astype('str')
+		return df
 
 	def save_df_to_directory(self, df, filename):
 		df.to_csv("dataset/" + filename , sep='\t', encoding='utf-8')
 		print("dataframe successfully saved")
 
 
-	def convertToDistinctRecord(self,df):
+	def summerizeQuote(self,df):
     
-		col_names =  ['customer_ID', 'shopping_point', 'day', 'time', 'state','group_size','homeowner','car_age','car_value','c_age_oldest','age_youngest','married_couple','C_previous','duration_previous','W_A','W_B','W_C','W_D','W_E','W_F','W_G','cost']
-		newDataframe  = pd.DataFrame(columns = col_names)
+		col_names =  ['customer_ID', 'shopping_point', 'day', 'state','group_size','homeowner','car_age','car_value','c_age_oldest','age_youngest','married_couple','c_previous','duration_previous','W_A','W_B','W_C','W_D','W_E','W_F','W_G','cost','wg_time']
+		
+		uniqueDataframe  = pd.DataFrame(columns = col_names)
 
+
+		uniqueRecord = []
 		print(len(df["customer_ID"].unique()))
 		grouped = df.groupby('customer_ID')
 
+		index  = 1
 		for name, group in tqdm(grouped):
 			# print(name)
 
-			customer_ID = group["customer_ID"].unique()
+			# print(type(name))
+			#print(group)
+			
+			customer_ID = group["customer_ID"].iloc[0]
 			shopping_pt = len(group["shopping_pt"])
-			day = ""
-			time = ""
-			state = group["state"][0]
-			group_size = group["group_size"][0]
-			homeowner = group["homeowner"][0]
-			car_age = group["car_age"][0]
-			married_couple = group["married_couple"][0]
-			C_previous = group["C_previous"][0]
+			day = group["day"].iloc[0]
+			state = group["state"].iloc[0]
+			group_size = group["group_size"].iloc[0]
+			homeowner = group["homeowner"].iloc[0]
+			car_age = group["car_age"].iloc[0]
+			car_value = group["car_value"].iloc[0]
+			married_couple = group["married_couple"].iloc[0]
+			c_previous = group["C_previous"].iloc[0]
 			avg_cost = group["cost"].mean()
-			group_size = group["group_size"][0]
-			duration_previous = group["duration_previous"][0]
+			group_size = group["group_size"].iloc[0]
+			duration_previous = group["duration_previous"].iloc[0]
 
 			wg_a_cal = group["wg_a_cal"].tolist()
+			wg_a_cal = self.findMostFrequentChar(''.join(wg_a_cal))
+
 			wg_b_cal = group["wg_b_cal"].tolist()
+			wg_b_cal = self.findMostFrequentChar(''.join(wg_b_cal))
+
 			wg_c_cal = group["wg_c_cal"].tolist()
+			wg_c_cal = self.findMostFrequentChar(''.join(wg_c_cal))
+
 			wg_d_cal = group["wg_d_cal"].tolist()
+			wg_d_cal = self.findMostFrequentChar(''.join(wg_d_cal))
+
 			wg_e_cal = group["wg_e_cal"].tolist()
+			wg_e_cal = self.findMostFrequentChar(''.join(wg_e_cal))
+
 			wg_f_cal = group["wg_f_cal"].tolist()
+			wg_f_cal = self.findMostFrequentChar(''.join(wg_f_cal))
+
 			wg_g_cal = group["wg_g_cal"].tolist()
+			wg_g_cal = self.findMostFrequentChar(''.join(wg_g_cal))
 
-			c_age_oldest = group["c_age_oldest"][0]
-			c_age_youngest = group["c_age_youngest"][0]
+			c_age_oldest = group["c_age_oldest"].iloc[0]
+			
+			c_age_youngest = group["c_age_youngest"].iloc[0]
 
+			time_cat = group["time_cat"].tolist()
+			time_cat = self.findMostFrequentChar(time_cat)
 
-
-
-			print(group["customer_ID"])
-
+			uniqueDataframe.loc[index].customer_ID = customer_ID
+			uniqueDataframe.loc[index].shopping_point = shopping_pt
+			uniqueDataframe.loc[index].day = day
+			uniqueDataframe.loc[index].state = state
+			uniqueDataframe.loc[index].group_size = group_size
+			uniqueDataframe.loc[index].homeowner = homeowner
+			uniqueDataframe.loc[index].car_age = car_age
+			uniqueDataframe.loc[index].car_value = car_value
+			uniqueDataframe.loc[index].c_age_oldest = c_age_oldest
+			uniqueDataframe.loc[index].age_youngest = c_age_youngest
+			uniqueDataframe.loc[index].married_couple = married_couple
+			uniqueDataframe.loc[index].c_previous = c_previous
+			uniqueDataframe.loc[index].duration_previous = duration_previous
+			uniqueDataframe.loc[index].W_A = wg_a_cal
+			uniqueDataframe.loc[index].W_B = wg_b_cal
+			uniqueDataframe.loc[index].W_C = wg_c_cal
+			uniqueDataframe.loc[index].W_D = wg_d_cal
+			uniqueDataframe.loc[index].W_E = wg_e_cal
+			uniqueDataframe.loc[index].W_F = wg_f_cal
+			uniqueDataframe.loc[index].W_G = wg_g_cal
+			uniqueDataframe.loc[index].cost = avg_cost
+			uniqueDataframe.loc[index].wg_time = time_cat
+			
+			index = index + 1
+			#print(time_cat)
+			# print(group["state"])
+			# print(group["customer_ID"])
+		print("Done summerizing Datasets")
 
 		
+			
 
 Data =  DataWrangler()
-# Data.performOperation()
 
 f, quote_df, p = Data.convertToDataframe()
-df = Data.performWeightedAverage(quote_df)
-df = Data.transformstateToCensusRegion(df)
+
+df = Data.transformstateToCensusRegion(quote_df)
 df = Data.transformAgeToCategorical(df)
-# Data.save_df_to_directory(df, "result.csv")
-df = Data.convertToDistinctRecord(df)
+df = Data.performWeightedAverageOnAG(df)
+
+df = Data.TransformTimeOfTheDay(df)
+df = Data.performWeightedAverageOntTime(df)
+
+# print(df)
+df = Data.summerizeQuote(df)
+Data.save_df_to_directory(df, "summerized_result.csv")
