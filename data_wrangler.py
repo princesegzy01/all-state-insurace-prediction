@@ -86,8 +86,9 @@ class DataWrangler:
 		return dataframe
 
 
-	def performWeightedAverageOnAG(self, quote_df):
+	def performWeightedAverageOnAG(self, df):
 
+		quote_df = df.copy()
 		quote_df['wg_a_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.A.astype('str')
 		quote_df['wg_b_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.B.astype('str')
 		quote_df['wg_c_cal'] = quote_df.shopping_pt.astype('int64') * quote_df.C.astype('str')
@@ -109,26 +110,23 @@ class DataWrangler:
 		print("dataframe successfully saved")
 
 
-	def summerizeQuote(self,df):
+	def summerizeQuote(self,df, purchase):
     
-		col_names =  ['customer_ID', 'shopping_point', 'day', 'state','group_size','homeowner','car_age','car_value','c_age_oldest','age_youngest','married_couple','c_previous','duration_previous','W_A','W_B','W_C','W_D','W_E','W_F','W_G','cost','wg_time']
+		col_names =  ['customer_ID','shopping_pt', 'record_type', 'day', 'state','group_size','homeowner','car_age','car_value','age_oldest','age_youngest','married_couple','C_previous','duration_previous','A','B','C','D','E','F','G','cost','time_cat']
 		
-		uniqueDataframe  = pd.DataFrame(columns = col_names, index = range(568240))
+		# uniqueDataframe  = pd.DataFrame(columns = col_names, index = range(568240))
 
 
 		uniqueRecord = []
 
 		grouped = df.groupby('customer_ID')
 
-		index  = 0
+		# index  = 0
 		for name, group in tqdm(grouped):
-			# print(name)
-
-			# print(type(name))
-			#print(group)
 			
 			customer_ID = group["customer_ID"].iloc[0]
 			shopping_pt = len(group["shopping_pt"])
+			record_type = group["record_type"].iloc[0]
 			day = group["day"].iloc[0]
 			state = group["state"].iloc[0]
 			group_size = group["group_size"].iloc[0]
@@ -169,51 +167,163 @@ class DataWrangler:
 			time_cat = group["time_cat"].tolist()
 			time_cat = self.findMostFrequentChar(time_cat)
 
-			uniqueDataframe.loc[index].customer_ID = customer_ID
-			uniqueDataframe.loc[index].shopping_point = shopping_pt
-			uniqueDataframe.loc[index].day = day
-			uniqueDataframe.loc[index].state = state
-			uniqueDataframe.loc[index].group_size = group_size
-			uniqueDataframe.loc[index].homeowner = homeowner
-			uniqueDataframe.loc[index].car_age = car_age
-			uniqueDataframe.loc[index].car_value = car_value
-			uniqueDataframe.loc[index].c_age_oldest = c_age_oldest
-			uniqueDataframe.loc[index].age_youngest = c_age_youngest
-			uniqueDataframe.loc[index].married_couple = married_couple
-			uniqueDataframe.loc[index].c_previous = c_previous
-			uniqueDataframe.loc[index].duration_previous = duration_previous
-			uniqueDataframe.loc[index].W_A = wg_a_cal
-			uniqueDataframe.loc[index].W_B = wg_b_cal
-			uniqueDataframe.loc[index].W_C = wg_c_cal
-			uniqueDataframe.loc[index].W_D = wg_d_cal
-			uniqueDataframe.loc[index].W_E = wg_e_cal
-			uniqueDataframe.loc[index].W_F = wg_f_cal
-			uniqueDataframe.loc[index].W_G = wg_g_cal
-			uniqueDataframe.loc[index].cost = avg_cost
-			uniqueDataframe.loc[index].wg_time = time_cat
-			
-			index = index + 1
-			#print(time_cat)
-			# print(group["state"])
-			# print(group["customer_ID"])
+		# 	uniqueDataframe.loc[index].customer_ID = customer_ID
+		# 	uniqueDataframe.loc[index].shopping_pt = shopping_pt
+		# 	uniqueDataframe.loc[index].record_type = record_type
+		# 	uniqueDataframe.loc[index].day = day
+		# 	uniqueDataframe.loc[index].state = state
+		# 	uniqueDataframe.loc[index].group_size = group_size
+		# 	uniqueDataframe.loc[index].homeowner = homeowner
+		# 	uniqueDataframe.loc[index].car_age = car_age
+		# 	uniqueDataframe.loc[index].car_value = car_value
+		# 	uniqueDataframe.loc[index].age_oldest = c_age_oldest
+		# 	uniqueDataframe.loc[index].age_youngest = c_age_youngest
+		# 	uniqueDataframe.loc[index].married_couple = married_couple
+		# 	uniqueDataframe.loc[index].C_previous = c_previous
+		# 	uniqueDataframe.loc[index].duration_previous = duration_previous
+		# 	uniqueDataframe.loc[index].A = wg_a_cal
+		# 	uniqueDataframe.loc[index].B = wg_b_cal
+		# 	uniqueDataframe.loc[index].C = wg_c_cal
+		# 	uniqueDataframe.loc[index].D = wg_d_cal
+		# 	uniqueDataframe.loc[index].E = wg_e_cal
+		# 	uniqueDataframe.loc[index].F = wg_f_cal
+		# 	uniqueDataframe.loc[index].G = wg_g_cal
+		# 	uniqueDataframe.loc[index].cost = avg_cost
+		# 	uniqueDataframe.loc[index].time_cat = time_cat
 
-		return uniqueDataframe
+			quoteList = []
+
+			quoteList.append(customer_ID)
+			quoteList.append(shopping_pt)
+			quoteList.append(record_type)
+			quoteList.append(day)
+			quoteList.append(state)
+			quoteList.append(group_size)
+			quoteList.append(homeowner)
+			quoteList.append(car_age)
+			quoteList.append(car_value)
+			quoteList.append(c_age_oldest)
+			quoteList.append(c_age_youngest)
+			quoteList.append(married_couple)
+			quoteList.append(c_previous)
+			quoteList.append(duration_previous)
+			quoteList.append(wg_a_cal)
+			quoteList.append(wg_b_cal)
+			quoteList.append(wg_c_cal)
+			quoteList.append(wg_d_cal)
+			quoteList.append(wg_e_cal)
+			quoteList.append(wg_f_cal)
+			quoteList.append(wg_g_cal)
+			quoteList.append(avg_cost)
+			quoteList.append(time_cat)
+
+			uniqueRecord.append(quoteList)
+			
+		# 	index = index + 1
+		# 	#print(time_cat)
+		# 	# print(group["state"])
+		# 	# print(group["customer_ID"])
+
 		print("✔✔  Done summerizing Datasets")
 
+		print("")
+		print("")
+
+		print("Merging Purchase datasets to summerized quote, please wait !!! ")
+
+
 		
+		for index, row in tqdm(purchase.iterrows()):
+      		# print row['c1'], row['c2']
+			purchaseList = []
+
+			purchaseList.append(row['customer_ID'])
+			purchaseList.append(row['shopping_pt'])
+			purchaseList.append(row['record_type'])
+			purchaseList.append(row['day'])
+			purchaseList.append(row['state'])
+			purchaseList.append(row['group_size'])
+			purchaseList.append(row['homeowner'])
+			purchaseList.append(row['car_age'])
+			purchaseList.append(row['car_value'])
+			purchaseList.append(row['c_age_oldest'])
+			purchaseList.append(row['c_age_youngest'])
+			purchaseList.append(row['married_couple'])
+			purchaseList.append(row['C_previous'])
+			purchaseList.append(row['duration_previous'])
+			purchaseList.append(row['A'])
+			purchaseList.append(row['B'])
+			purchaseList.append(row['C'])
+			purchaseList.append(row['D'])
+			purchaseList.append(row['E'])
+			purchaseList.append(row['F'])
+			purchaseList.append(row['G'])
+			purchaseList.append(row['cost'])
+			purchaseList.append(row['time_cat'])
+
+			uniqueRecord.append(purchaseList)
+
+			# uniqueDataframe.loc[index].customer_ID = row['customer_ID']
+			# uniqueDataframe.loc[index].shopping_pt = row['shopping_pt']
+			# uniqueDataframe.loc[index].record_type = row['record_type']
+			# uniqueDataframe.loc[index].day = row['day']
+			# uniqueDataframe.loc[index].state = row['state']
+			# uniqueDataframe.loc[index].group_size = row['group_size']
+			# uniqueDataframe.loc[index].homeowner = row['homeowner']
+			# uniqueDataframe.loc[index].car_age = row['car_age']
+			# uniqueDataframe.loc[index].car_value = row['car_value']
+			# uniqueDataframe.loc[index].age_oldest = row['c_age_oldest']
+			# uniqueDataframe.loc[index].age_youngest = row['c_age_youngest']
+			# uniqueDataframe.loc[index].married_couple = row['married_couple']
+			# uniqueDataframe.loc[index].C_previous = row['C_previous']
+			# uniqueDataframe.loc[index].duration_previous = row['duration_previous']
+			# uniqueDataframe.loc[index].A = row['A']
+			# uniqueDataframe.loc[index].B = row['B']
+			# uniqueDataframe.loc[index].C = row['C']
+			# uniqueDataframe.loc[index].D = row['D']
+			# uniqueDataframe.loc[index].E = row['E']
+			# uniqueDataframe.loc[index].F = row['F']
+			# uniqueDataframe.loc[index].G = row['G']
+			# uniqueDataframe.loc[index].cost = row['cost']
+			# uniqueDataframe.loc[index].time_cat = row['time_cat']
+
+
+
+		dfIndex = range(len(uniqueRecord))
+
+		uniqueDataframe  = pd.DataFrame(uniqueRecord, columns = col_names, index = dfIndex)
+		print("✔✔ Purchase successfully merged")
+
+		return uniqueDataframe
+		
+
+	def mergeDataframe(self, purchase, quote):
+    		
+			#  drop some fields in purchase datafram
+			purchase.drop(["time","location","new_time","risk_factor"], axis=1)
+
+			frame = [ purchase, quote]
+			joinedDF = pd.concat([quote, purchase], axis=0, sort=True)
+
+			# joinedDF.reindex(range(len(joinedDF["customer_ID"])))
+
+			return joinedDF
+
+
 			
 # initialize class
 Data =  DataWrangler()
 
+print("")
+print("")
 print(" Starting data preparation & compression , please wait !!! ")
+print("")
+
 # convert csv file to dataframe
 df = Data.convertToDataframe()
 
-# split dataframe to all, putchase & quote
-f, quote_df, p = Data.splitDataFrameToSections(df)
-
 # process non available data in dataframe
-df = Data.prepareDataForOperation(quote_df)
+df = Data.prepareDataForOperation(df)
 
 # convert and group state to 4 categories
 df = Data.transformstateToCensusRegion(df)
@@ -221,17 +331,23 @@ df = Data.transformstateToCensusRegion(df)
 #  transform age from numeric to categorical
 df = Data.transformAgeToCategorical(df)
 
-# perform weighted average on the A-G features
-df = Data.performWeightedAverageOnAG(df)
 
 # transform the time of quote from time to Categorical
 df = Data.transformTimeOfTheDay(df)
 
+# split dataframe to all, putchase & quote
+full, quote_df, purchase = Data.splitDataFrameToSections(df)
+# Data.saveToDirectory(purchase, "purchase_result.csv")
+
+# perform weighted average on the A-G features
+df = Data.performWeightedAverageOnAG(quote_df)
 # perform weighted average on time
 df = Data.performWeightedAverageOntTime(df)
 
 #  summerize duplicates quotes to one for customer ID
-df = Data.summerizeQuote(df)
+quote = Data.summerizeQuote(df, purchase)
 
-# save the content of the datafram as csv file
-Data.saveToDirectory(df, "summerized_resultx.csv")
+
+# result = Data.mergeDataframe(purchase, quote)
+
+Data.saveToDirectory(quote, "summerized_quote.csv")
